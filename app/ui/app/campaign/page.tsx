@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
+import PledgeModal from '../components/PledgeModal';
 
 // ─── Project data ─────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ const REWARDS = [
   },
   {
     id: 2,
-    amount: 89,
+    amount: 4.99,
     title: 'Early Bird — Single Wallet',
     description: 'One Compact USB Wallet (matte black edition), USB-C cable, quick-start card, and XRP Ledger setup guide. Limited early bird pricing — save 25%.',
     delivery: '31 May 2026',
@@ -41,7 +42,7 @@ const REWARDS = [
   },
   {
     id: 3,
-    amount: 169,
+    amount: 9.99,
     title: 'Double Pack',
     description: 'Two Compact USB Wallets — keep one, gift one. Includes both USB-A and USB-C cables, carrying pouch, and setup guide.',
     delivery: '31 May 2026',
@@ -50,7 +51,7 @@ const REWARDS = [
   },
   {
     id: 4,
-    amount: 299,
+    amount: 19.99,
     title: 'Pro Kit',
     description: 'Two wallets + premium aluminium carry case, security seed backup plate, priority email support, and your name in the product credits.',
     delivery: '31 June 2026',
@@ -73,7 +74,7 @@ function ProgressBar({ raised, goal }: { raised: number; goal: number }) {
   );
 }
 
-function RewardCard({ reward }: { reward: typeof REWARDS[0] }) {
+function RewardCard({ reward, onSelect }: { reward: typeof REWARDS[0]; onSelect: (r: typeof REWARDS[0]) => void }) {
   const soldOut = reward.limit !== null && reward.backers >= reward.limit;
   const remaining = reward.limit !== null ? reward.limit - reward.backers : null;
 
@@ -91,6 +92,7 @@ function RewardCard({ reward }: { reward: typeof REWARDS[0] }) {
       </div>
       <button
         disabled={soldOut}
+        onClick={() => !soldOut && onSelect(reward)}
         className="w-full mt-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-full text-sm transition-colors"
       >
         {soldOut ? 'Sold out' : 'Select this reward'}
@@ -250,6 +252,7 @@ function PlaceholderTab({ label }: { label: string }) {
 
 export default function CampaignPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Story');
+  const [selectedReward, setSelectedReward] = useState<typeof REWARDS[0] | null>(null);
   const pct = Math.min(Math.round((PROJECT.raised / PROJECT.goal) * 100), 100);
 
   return (
@@ -391,7 +394,7 @@ export default function CampaignPage() {
                   </button>
                 </div>
 
-                {REWARDS.map((r) => <RewardCard key={r.id} reward={r} />)}
+                {REWARDS.map((r) => <RewardCard key={r.id} reward={r} onSelect={setSelectedReward} />)}
               </div>
             </div>
 
@@ -414,6 +417,13 @@ export default function CampaignPage() {
           </div>
         </div>
       </footer>
+
+      {selectedReward && (
+        <PledgeModal
+          reward={selectedReward}
+          onClose={() => setSelectedReward(null)}
+        />
+      )}
     </div>
   );
 }

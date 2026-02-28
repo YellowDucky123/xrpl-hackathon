@@ -28,8 +28,8 @@ CREATE TABLE projects (
 
 -- Seed users
 INSERT INTO users (username, password, user_wallet_seed) VALUES
-  ('Max', 'test', 'rAlice1234XRPWalletAddress'),
-  ('Bob', 'test', 'rBob5678XRPWalletAddress');
+  ('Max', 'test', 'rNxXejQBYqNfNDHKsswSKE1LGz2wfGQoyr'),
+  ('Bob', 'test', 'rNxXejQBYqNfNDHKsswSKE1LGz2wfGQoyr');
 
 -- Seed projects
 -- funded_by = 2026-02-28 + days_left
