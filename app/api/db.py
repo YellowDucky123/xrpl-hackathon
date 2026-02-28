@@ -12,6 +12,9 @@ def get_connection():
     )
 
 
+'''
+Get all projects row by row
+'''
 def get_all_projects():
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -19,13 +22,27 @@ def get_all_projects():
             return [dict(row) for row in cur.fetchall()]
 
 def get_project_by_id(project_id):
-    conn = _connection()
+    conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
     project = cur.fetchone()
 
     return dict(project)
+
+'''
+Write to a single project on filtered through it's id
+'''
+def update_project_wallet(project_id, wallet_seed) -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("UPDATE projects SET project_wallet_seed = %s WHERE id = %s", (wallet_seed, project_id))
+
+    conn.commit()
+    conn.close()
+
+    return 1
 
 def get_projects_by_flag(flag):
     allowed = {"is_featured", "is_recommended", "is_popular"}
