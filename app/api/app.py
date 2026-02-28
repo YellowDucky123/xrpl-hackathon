@@ -14,9 +14,10 @@ def fill_wallets():
         project_wallet_seed = project['project_wallet_seed']
 
         if project_wallet_seed is None:
-            test_wallet = generate_faucet_wallet(client, debug=True)
-            test_wallet_seed = test_wallet.seed
-            
+            wallet = generate_faucet_wallet(client, debug=True)
+            wallet_seed = wallet.seed
+            if not update_project_wallet(project_id, wallet_seed):
+                print("project wallet seed addition failed!")
 
 
 @app.route("/health")
