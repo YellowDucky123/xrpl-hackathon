@@ -27,7 +27,6 @@ def get_all_projects():
             cur.execute("SELECT * FROM projects ORDER BY id")
             return [_serialize(row) for row in cur.fetchall()]
 
-
 def get_project_by_id(project_id):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -35,6 +34,27 @@ def get_project_by_id(project_id):
             row = cur.fetchone()
             return _serialize(row) if row else None
 
+
+def get_user_wallet_seed(user_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT user_wallet_seed FROM projects WHERE id = %s", (user_id, ))
+
+
+'''
+Write to a single project on filtered through it's id
+'''
+def update_project_wallet(project_id, wallet_seed) -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("UPDATE projects SET project_wallet_seed = %s WHERE id = %s", (wallet_seed, project_id))
+
+    conn.commit()
+    conn.close()
+
+    return 1
 
 def get_projects_by_flag(flag):
     allowed = {"is_featured", "is_recommended", "is_popular"}
@@ -68,7 +88,7 @@ def login_user(username, password):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, username, user_wallet_seed FROM users WHERE username = %s AND password = %s",
+                "SELECT id, username FROM users WHERE username = %s AND password = %s",
                 (username, password),
             )
             row = cur.fetchone()
