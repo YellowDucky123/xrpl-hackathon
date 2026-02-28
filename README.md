@@ -15,6 +15,21 @@
 
 **DO NOT SCAN THESE WITH A REAL ACTIVE WALLET**. While it shouldn't go through I wouldn't want to be responsible for a 5 XRP loss ;)
 
+### .env 
+There are also necessary env files that you should add manually
+```
+POSTGRES_USER=xrpuser
+POSTGRES_PASSWORD=xrppass
+POSTGRES_DB=xrpdb
+DB_HOST=db
+DB_NAME=xrpdb
+DB_USER=xrpuser
+DB_PASSWORD=xrppass
+XAMAN_API_KEY=
+XAMAN_API_SECRET=
+```
+Also get a dev account to get your API key
+
 ## Problem Statement
 "To eliminate risk is to eliminate worry"
 
