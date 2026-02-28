@@ -2,7 +2,7 @@ CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
-  user_wallet_id TEXT
+  user_wallet_seed TEXT
 );
 
 CREATE TABLE projects (
@@ -20,11 +20,12 @@ CREATE TABLE projects (
   redirect_link TEXT,
   is_featured BOOLEAN DEFAULT FALSE,
   is_recommended BOOLEAN DEFAULT FALSE,
-  is_popular BOOLEAN DEFAULT FALSE
+  is_popular BOOLEAN DEFAULT FALSE,
+  project_wallet_seed TEXT DEFAULT NULL
 );
 
 -- Seed users
-INSERT INTO users (username, password, user_wallet_id) VALUES
+INSERT INTO users (username, password, user_wallet_seed) VALUES
   ('alice', 'hashed_password_1', 'rAlice1234XRPWalletAddress'),
   ('bob',   'hashed_password_2', 'rBob5678XRPWalletAddress');
 

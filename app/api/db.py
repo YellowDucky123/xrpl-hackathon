@@ -32,7 +32,7 @@ def get_projects_by_flag(flag):
 def get_all_users():
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT id, username, user_wallet_id FROM users ORDER BY id")
+            cur.execute("SELECT id, username, user_wallet_seed FROM users ORDER BY id")
             return [dict(row) for row in cur.fetchall()]
 
 
@@ -40,7 +40,7 @@ def get_user_by_id(user_id):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, username, user_wallet_id FROM users WHERE id = %s",
+                "SELECT id, username, user_wallet_seed FROM users WHERE id = %s",
                 (user_id,),
             )
             row = cur.fetchone()
