@@ -1,15 +1,23 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from db import (
-    get_all_projects,
-    get_projects_by_flag,
-    get_all_users,
-    get_user_by_id,
-    login_user,
-)
+
+import db
 
 app = Flask(__name__)
 CORS(app)
+
+def fill_wallets():
+    projects = get_all_projects()
+
+    for project in projects:
+        project_id = project['id']
+        project_wallet_seed = project['project_wallet_seed']
+
+        if project_wallet_seed is None:
+            wallet = generate_faucet_wallet(client, debug=True)
+            wallet_seed = wallet.seed
+            if not update_project_wallet(project_id, wallet_seed):
+                print("project wallet seed addition failed!")
 
 
 @app.route("/health")
@@ -36,6 +44,41 @@ def projects_recommended():
 def projects_popular():
     return jsonify(get_projects_by_flag("is_popular"))
 
+@app.route("/projects/<int:project_id>")
+def project(project_id):
+    data = request.json
+
+    goal = data['goal']
+    days = data['days']
+
+    curr_project = db.get_project_by_id(project_id) 
+
+    # project wallet seed
+    EXISTING_SEED = curr_project['project_wallet_seed']
+
+    # This creates the wallet instance from the seed
+    my_wallet = Wallet.from_seed(EXISTING_SEED)
+
+    investment_account = my_wallet.classic_address
+    prod_info = AccountInfo(
+        account=investment_account,
+        ledger_index="validated",
+        strict=True,
+    )
+
+    response = client.request(prod_info)
+    prod_result = response.result
+
+    curr_investment = prod_result["account_data"]["balance"]
+
+    ret_data = {
+        "curr_investment": curr_investment,
+        "goal": goal,
+        "days": days
+    }
+
+    return jsonify(ret_data), 200
+
 
 @app.route("/users")
 def users():
@@ -53,7 +96,7 @@ def user(user_id):
 @app.route("/login", methods=["POST"])
 def login():
     body = request.get_json()
-    user = login_user(body.get("username", ""), body.get("password", ""))
+    user = db.login_user(body.get("username", ""), body.get("password", ""))
     if user is None:
         return jsonify({"error": "Invalid credentials"}), 401
     return jsonify(user)
