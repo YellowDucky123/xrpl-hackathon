@@ -35,7 +35,7 @@ export default function Navbar() {
     <>
       <nav className="bg-green-700 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="SafeFund logo" width={32} height={32} className="rounded-full" />
+          <Image src="/logo.png" alt="SafeFund logo" width={64} height={64} className="rounded-full" />
           <span className="font-bold text-lg tracking-wide">SafeFund</span>
         </Link>
 
