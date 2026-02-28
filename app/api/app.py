@@ -1,11 +1,25 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+
 from xrpl.clients import JsonRpcClient
 from xrpl.wallet import Wallet, generate_faucet_wallet
 from xrpl.models.requests import AccountInfo
 
+from xrpl.models import EscrowCreate, EscrowFinish
+from xrpl.transaction import submit_and_wait
+from xrpl.utils import datetime_to_ripple_time
+
+from xrpl.clients import JsonRpcClient
+from xrpl.wallet import Wallet, generate_faucet_wallet
+from xrpl.models.requests import AccountInfo
+
+from os import urandom
+
 import db
 
+#
+# The Client for the whole infrastructure uses this for now
+#
 client = JsonRpcClient("https://s.altnet.rippletest.net:51234")
 
 app = Flask(__name__)
@@ -24,6 +38,9 @@ def fill_wallets():
             wallet_seed = wallet.seed
             if not db.update_project_wallet(project_id, wallet_seed):
                 print("project wallet seed addition failed!")
+
+# Fill all wallets for all projects / users with no wallets
+fill_wallets()
 
 
 @app.route("/health")
@@ -50,6 +67,39 @@ def projects_recommended():
 def projects_popular():
     return jsonify(db.get_projects_by_flag("is_popular"))
 
+
+@app.route("")
+def button_press(user_id: int, project_id: int, invest_amount: str, date):
+    user_wallet_seed = db.get_user_wallet_seed(user_id)
+    project_wallet_seed = db.get_project_by_id(project_id)['project_wallet_seed']
+
+    user_wallet = Wallet.from_seed(user_wallet_seed)
+    project_wallet = Wallet.from_seed(project_wallet_seed)
+
+    # Create the crypto-condition for release -----------------------------------
+    preimage = urandom(32)
+    fulfillment = PreimageSha256(preimage=preimage)
+    condition_hex = fulfillment.condition_binary.hex().upper()
+    
+    # used to finish the escrow, the escrow password if you will
+    fulfillment_hex = fulfillment.serialize_binary().hex().upper()
+
+    escrow_create = EscrowCreate(
+        account = user_wallet.address,
+        destination = project_wallet.address,
+        amount = invest_amount, # drops of XRP
+        condition = condition_hex,
+        cancel_after = cancel_after_rippletime
+    )
+    
+    response = submit_and_wait(escrow_create, client, user_wallet, autofill=True)
+    res = response.result
+
+    # the escrow sequence
+    escrow_seq = res["tx_json"]["Sequence"]
+
+    return 200
+    
 
 @app.route("/projects/<int:project_id>")
 def project(project_id):
