@@ -26,6 +26,21 @@ CREATE TABLE projects (
   estimated_delivery DATE
 );
 
+CREATE TABLE escrows (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  project_id INTEGER REFERENCES projects(id),
+  amount NUMERIC NOT NULL,
+  escrow_type TEXT NOT NULL CHECK (escrow_type IN ('fund_reaching', 'on_shipment')),
+  condition_hex TEXT NOT NULL,
+  fulfillment_hex TEXT NOT NULL,
+  escrow_sequence INTEGER,
+  escrow_account TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Seed users
 INSERT INTO users (username, password, user_wallet_seed) VALUES
   ('Max', 'test', 'rNxXejQBYqNfNDHKsswSKE1LGz2wfGQoyr'),

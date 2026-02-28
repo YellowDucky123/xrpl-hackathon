@@ -36,15 +36,11 @@ def get_project_by_id(project_id):
 
 
 def get_user_wallet_seed(user_id):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT user_wallet_seed FROM projects WHERE id = %s", (user_id, ))
-    row = cur.fetchone()
-    
-    if row:
-        return row  # Grab the first (and only) item in the tuple
-    return None
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_wallet_seed FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            return row[0] if row else None
 
 
 '''
@@ -60,6 +56,16 @@ def update_project_wallet(project_id, wallet_seed) -> int:
     conn.close()
 
     return 1
+
+def update_user_wallet(user_id, wallet_seed):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET user_wallet_seed = %s WHERE id = %s",
+                (wallet_seed, user_id),
+            )
+    return 1
+
 
 def get_projects_by_flag(flag):
     allowed = {"is_featured", "is_recommended", "is_popular"}
@@ -93,8 +99,26 @@ def login_user(username, password):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, username FROM users WHERE username = %s AND password = %s",
+                "SELECT id, username, user_wallet_seed FROM users WHERE username = %s AND password = %s",
                 (username, password),
             )
             row = cur.fetchone()
             return _serialize(row) if row else None
+
+
+def create_escrow(user_id, project_id, amount, escrow_type,
+                  condition_hex, fulfillment_hex, escrow_sequence,
+                  escrow_account, destination):
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """INSERT INTO escrows
+                   (user_id, project_id, amount, escrow_type, condition_hex,
+                    fulfillment_hex, escrow_sequence, escrow_account, destination)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   RETURNING id""",
+                (user_id, project_id, amount, escrow_type, condition_hex,
+                 fulfillment_hex, escrow_sequence, escrow_account, destination),
+            )
+            row = cur.fetchone()
+            return row["id"] if row else None
