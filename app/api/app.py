@@ -1,13 +1,19 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from xrpl.models import EscrowCreate, EscrowFinish
+from xrpl.transaction import submit_and_wait
+from xrpl.utils import datetime_to_ripple_time
 
 import db
 
 app = Flask(__name__)
 CORS(app)
 
+JSON_RPC_URL = "https://s.altnet.rippletest.net:51234/"
+client = JsonRpcClient(JSON_RPC_URL)
+
 def fill_wallets():
-    projects = get_all_projects()
+    projects = db.get_all_projects()
 
     for project in projects:
         project_id = project['id']
@@ -16,8 +22,11 @@ def fill_wallets():
         if project_wallet_seed is None:
             wallet = generate_faucet_wallet(client, debug=True)
             wallet_seed = wallet.seed
-            if not update_project_wallet(project_id, wallet_seed):
+            if not db.update_project_wallet(project_id, wallet_seed):
                 print("project wallet seed addition failed!")
+
+# Fill all wallets for all projects / users with no wallets
+fill_wallets()
 
 
 @app.route("/health")
@@ -43,6 +52,24 @@ def projects_recommended():
 @app.route("/projects/popular")
 def projects_popular():
     return jsonify(get_projects_by_flag("is_popular"))
+
+
+@app.route("")
+def button_press(user_id: int, project_id: int, invest_amount: str, date):
+    user_wallet_seed = db.get_user_wallet_seed(user_id)
+    project_wallet_seed = db.get_project_by_id(project_id)['project_wallet_seed']
+
+    user_wallet = Wallet.from_seed(user_wallet_seed)
+    project_wallet = Wallet.from_seed(project_wallet_seed)
+
+    escrow_create = EscrowCreate(
+        account = user_wallet.address,
+        destination = project_wallet.address,
+        amount = invest_amount, # drops of XRP
+        condition = condition_hex,
+        cancel_after = cancel_after_rippletime
+    )
+    response = submit_and_wait(escrow_create, client, user_wallet, autofill=True)
 
 @app.route("/projects/<int:project_id>")
 def project(project_id):
@@ -87,7 +114,7 @@ def users():
 
 @app.route("/users/<int:user_id>")
 def user(user_id):
-    result = get_user_by_id(user_id)
+    result = db.get_user_by_id(user_id)
     if result is None:
         return jsonify({"error": "User not found"}), 404
     return jsonify(result)
