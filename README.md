@@ -1,4 +1,9 @@
 # SafeFund
+
+<p align="center">
+    <img src="https://github.com/YellowDucky123/xrpl-hackathon/blob/main/assets/logo.png">
+</p>
+
 ## Quickstart
 1. Clone the repo using `git clone git@github.com:YellowDucky123/xrpl-hackathon.git`
 2. `cd xrpl-hackathon`

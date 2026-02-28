@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bring Creative Projects to Life with XRP",
+  title: "SafeFund",
   description: "A Kickstarter-style campaign powered by XRP to fund creative projects worldwide.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({

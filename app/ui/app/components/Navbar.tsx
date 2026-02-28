@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import LoginModal from './LoginModal';
 
@@ -34,8 +35,8 @@ export default function Navbar() {
     <>
       <nav className="bg-green-700 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-green-300" />
-          <span className="font-bold text-lg tracking-wide">XRP Creates</span>
+          <Image src="/logo.png" alt="SafeFund logo" width={32} height={32} className="rounded-full" />
+          <span className="font-bold text-lg tracking-wide">SafeFund</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1 bg-green-800 rounded-full px-3 py-1.5 flex-1 max-w-sm mx-8">
