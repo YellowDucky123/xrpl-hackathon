@@ -64,3 +64,13 @@ def login_user(username, password):
             )
             row = cur.fetchone()
             return dict(row) if row else None
+        
+def get_project_wallet(project_id):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT project_wallet_seed FROM projects WHERE id = %s",
+                (project_id,),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
