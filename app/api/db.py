@@ -45,3 +45,14 @@ def get_user_by_id(user_id):
             )
             row = cur.fetchone()
             return dict(row) if row else None
+
+
+def login_user(username, password):
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, username, user_wallet_seed FROM users WHERE username = %s AND password = %s",
+                (username, password),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None

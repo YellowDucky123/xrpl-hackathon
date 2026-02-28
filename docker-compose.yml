@@ -32,6 +32,8 @@ services:
   ui:
     build:
       context: ./app/ui
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:5001
     environment:
       API_URL: http://api:5000
     depends_on:

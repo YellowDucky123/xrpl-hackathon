@@ -7,6 +7,10 @@ RUN npm install
 
 COPY . .
 
+# NEXT_PUBLIC_* vars are inlined at build time — must be an ARG, not just ENV
+ARG NEXT_PUBLIC_API_URL=http://localhost:5001
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npm run build
 
 EXPOSE 3000

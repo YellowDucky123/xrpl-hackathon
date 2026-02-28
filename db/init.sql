@@ -26,18 +26,18 @@ CREATE TABLE projects (
 
 -- Seed users
 INSERT INTO users (username, password, user_wallet_seed) VALUES
-  ('alice', 'hashed_password_1', 'rAlice1234XRPWalletAddress'),
-  ('bob',   'hashed_password_2', 'rBob5678XRPWalletAddress');
+  ('Alice', 'hashed_password_1', 'rAlice1234XRPWalletAddress'),
+  ('Bob',   'hashed_password_2', 'rBob5678XRPWalletAddress');
 
 -- Seed projects
 INSERT INTO projects (title, creator, category, description, raised, goal, backers, days_left, badge, front_pic, is_featured, is_recommended, is_popular) VALUES
   (
-    'Symphonic Futures: An AI-Augmented Orchestra',
-    'Elara Sounds Collective',
-    'Music',
-    'We''re blending live orchestral performance with generative AI composition to produce an entirely new genre of concert experience.',
+    'Compact USB Wallet',
+    'Crypto Collective',
+    'Cypto-Lifestyle',
+    'Be independent of the internet with state of the art portable wallets',
     87400, 120000, 742, 18, 'Staff Pick',
-    'https://media.cnn.com/api/v1/images/stellar/prod/140312125126-robot-musicians.jpg?q=w_4776,h_3164,x_0,y_0,c_fill',
+    'https://article.images.consumerreports.org/image/upload/t_article_tout/v1649086446/prod/content/dam/CRO-Images-2022/Audience-Growth/04Apr/CR-AG-InlineHero-Crypto-Wallets-04-22',
     TRUE, FALSE, FALSE
   ),
   (

@@ -1,10 +1,11 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from db import (
     get_all_projects,
     get_projects_by_flag,
     get_all_users,
     get_user_by_id,
+    login_user,
 )
 
 app = Flask(__name__)
@@ -47,6 +48,15 @@ def user(user_id):
     if result is None:
         return jsonify({"error": "User not found"}), 404
     return jsonify(result)
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    body = request.get_json()
+    user = login_user(body.get("username", ""), body.get("password", ""))
+    if user is None:
+        return jsonify({"error": "Invalid credentials"}), 401
+    return jsonify(user)
 
 
 if __name__ == "__main__":
