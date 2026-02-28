@@ -35,6 +35,11 @@ def get_user_wallet_seed(user_id):
     cur = conn.cursor()
 
     cur.execute("SELECT user_wallet_seed FROM projects WHERE id = %s", (user_id, ))
+    row = cur.fetchone()
+    
+    if row:
+        return row  # Grab the first (and only) item in the tuple
+    return None
 
 
 '''
