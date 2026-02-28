@@ -18,6 +18,14 @@ def get_all_projects():
             cur.execute("SELECT * FROM projects ORDER BY id")
             return [dict(row) for row in cur.fetchall()]
 
+def get_project_by_id(project_id):
+    conn = _connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+    project = cur.fetchone()
+
+    return dict(project)
 
 def get_projects_by_flag(flag):
     allowed = {"is_featured", "is_recommended", "is_popular"}
