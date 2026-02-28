@@ -1,7 +1,7 @@
 # SafeFund
 
 <p align="center">
-    <img src="https://github.com/YellowDucky123/xrpl-hackathon/blob/main/assets/logo.png">
+    <img src="https://github.com/YellowDucky123/xrpl-hackathon/blob/main/assets/logo.png" width=500>
 </p>
 
 ## Quickstart
