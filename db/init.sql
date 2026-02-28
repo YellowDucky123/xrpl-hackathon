@@ -26,8 +26,8 @@ CREATE TABLE projects (
 
 -- Seed users
 INSERT INTO users (username, password, user_wallet_seed) VALUES
-  ('Alice', 'hashed_password_1', 'rAlice1234XRPWalletAddress'),
-  ('Bob',   'hashed_password_2', 'rBob5678XRPWalletAddress');
+  ('Max', 'test', 'rAlice1234XRPWalletAddress'),
+  ('Bob', 'test', 'rBob5678XRPWalletAddress');
 
 -- Seed projects
 INSERT INTO projects (title, creator, category, description, raised, goal, backers, days_left, badge, front_pic, is_featured, is_recommended, is_popular) VALUES
