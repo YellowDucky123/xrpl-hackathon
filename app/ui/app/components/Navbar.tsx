@@ -58,7 +58,7 @@ export default function Navbar() {
               onClick={handleSignOut}
               className="bg-green-400 hover:bg-green-300 text-green-900 font-bold px-5 py-2 rounded-full text-sm transition-colors"
             >
-              👤 {user.username}
+              {user.username}
             </button>
           ) : (
             <button

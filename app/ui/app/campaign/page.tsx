@@ -106,7 +106,7 @@ function StoryTab() {
     <article className="prose prose-green max-w-none text-gray-700 space-y-8">
 
       <img
-        src={PROJECT.image}
+        src={"https://i.insider.com/627e8328e7446d0018cc6382?width=1200&format=jpeg"}
         alt="Compact USB Wallet hero"
         className="w-full rounded-xl object-cover max-h-96"
       />
