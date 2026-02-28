@@ -30,6 +30,13 @@ def get_project_by_id(project_id):
 
     return dict(project)
 
+def get_user_wallet_seed(user_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT user_wallet_seed FROM projects WHERE id = %s", (user_id, ))
+
+
 '''
 Write to a single project on filtered through it's id
 '''
@@ -76,7 +83,7 @@ def login_user(username, password):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, username, user_wallet_seed FROM users WHERE username = %s AND password = %s",
+                "SELECT id, username FROM users WHERE username = %s AND password = %s",
                 (username, password),
             )
             row = cur.fetchone()
