@@ -2,13 +2,13 @@ import os
 import hashlib
 from datetime import datetime, timedelta, timezone
 
+import requests as http_requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from xrpl.clients import JsonRpcClient
 from xrpl.wallet import Wallet, generate_faucet_wallet
-from xrpl.models.requests import AccountInfo
-from xrpl.models import EscrowCreate
+from xrpl.models.requests import AccountInfo, Tx
 from xrpl.transaction import submit_and_wait
 from xrpl.utils import datetime_to_ripple_time
 
@@ -16,8 +16,14 @@ import db
 
 client = JsonRpcClient("https://s.altnet.rippletest.net:51234")
 
+XAMAN_API_KEY    = os.environ.get("XAMAN_API_KEY", "")
+XAMAN_API_SECRET = os.environ.get("XAMAN_API_SECRET", "")
+
 app = Flask(__name__)
 CORS(app)
+
+# In-memory store for pending Xaman payloads keyed by uuid
+pending_escrows: dict = {}
 
 
 def generate_condition_fulfillment():
@@ -27,13 +33,10 @@ def generate_condition_fulfillment():
     """
     preimage = os.urandom(32)
     fingerprint = hashlib.sha256(preimage).digest()
-    cost = len(preimage).to_bytes(2, "big")  # 32 -> b'\x00\x20'
+    cost = len(preimage).to_bytes(2, "big")
 
-    # Fulfillment DER: A0 22 80 20 {32-byte preimage}
     fulfillment = bytes([0xA0, 0x22, 0x80, 0x20]) + preimage
-
-    # Condition DER: A0 26 80 20 {32-byte SHA-256(preimage)} 81 02 {2-byte cost}
-    condition = bytes([0xA0, 0x26, 0x80, 0x20]) + fingerprint + bytes([0x81, 0x02]) + cost
+    condition    = bytes([0xA0, 0x26, 0x80, 0x20]) + fingerprint + bytes([0x81, 0x02]) + cost
 
     return condition.hex().upper(), fulfillment.hex().upper()
 
@@ -51,7 +54,6 @@ def fill_user_wallets():
     users = db.get_all_users()
     for user in users:
         seed = user.get("user_wallet_seed") or ""
-        # Classic addresses start with 'r' — not a usable seed
         if not seed or seed.startswith("r"):
             wallet = generate_faucet_wallet(client, debug=True)
             db.update_user_wallet(user["id"], wallet.seed)
@@ -113,16 +115,19 @@ def project(project_id):
     }), 200
 
 
-@app.route("/escrow", methods=["POST"])
-def create_escrow():
-    body = request.get_json()
-    project_id      = body.get("project_id")
-    user_wallet_seed = body.get("user_wallet_seed")
-    amount_xrp      = body.get("amount")
-    user_id         = body.get("user_id")
+@app.route("/escrow/payload", methods=["POST"])
+def create_escrow_payload():
+    """
+    Create two Xaman sign payloads (fund_reaching + on_shipment).
+    Returns QR code URLs and WebSocket URLs for the frontend to display.
+    """
+    body        = request.get_json()
+    project_id  = body.get("project_id")
+    amount_xrp  = body.get("amount")
+    user_id     = body.get("user_id")
 
-    if not all([project_id, user_wallet_seed, amount_xrp]):
-        return jsonify({"error": "Missing required fields: project_id, user_wallet_seed, amount"}), 400
+    if not all([project_id, amount_xrp]):
+        return jsonify({"error": "Missing required fields: project_id, amount"}), 400
 
     project = db.get_project_by_id(project_id)
     if not project:
@@ -130,58 +135,141 @@ def create_escrow():
 
     project_seed = project.get("project_wallet_seed")
     if not project_seed:
-        return jsonify({"error": "Project wallet not initialised — run fill_wallets first"}), 400
+        return jsonify({"error": "Project wallet not initialised"}), 400
 
-    try:
-        user_wallet    = Wallet.from_seed(user_wallet_seed)
-        project_wallet = Wallet.from_seed(project_seed)
-        project_address = project_wallet.classic_address
+    project_wallet  = Wallet.from_seed(project_seed)
+    project_address = project_wallet.classic_address
 
-        half_xrp   = float(amount_xrp) / 2
-        half_drops = str(int(half_xrp * 1_000_000))
+    half_xrp   = float(amount_xrp) / 2
+    half_drops = str(int(half_xrp * 1_000_000))
 
-        cancel_delay = 300
-        cancel_after = datetime.now(tz=timezone.utc) + timedelta(seconds=cancel_delay)
-        cancel_after_rippletime = datetime_to_ripple_time(cancel_after)
+    cancel_after = datetime.now(tz=timezone.utc) + timedelta(seconds=300)
+    cancel_after_rippletime = datetime_to_ripple_time(cancel_after)
 
-        results = []
-        for escrow_type in ("fund_reaching", "on_shipment"):
-            condition_hex, fulfillment_hex = generate_condition_fulfillment()
+    xaman_headers = {
+        "Content-Type": "application/json",
+        "X-API-Key":    XAMAN_API_KEY,
+        "X-API-Secret": XAMAN_API_SECRET,
+    }
 
-            escrow_tx = EscrowCreate(
-                account=user_wallet.classic_address,
-                destination=project_address,
-                amount=half_drops,
-                condition=condition_hex,
-                cancel_after=cancel_after_rippletime,
-            )
+    payloads = []
+    for escrow_type in ("fund_reaching", "on_shipment"):
+        condition_hex, fulfillment_hex = generate_condition_fulfillment()
 
-            response = submit_and_wait(escrow_tx, client, user_wallet, autofill=True)
-            escrow_seq = response.result["tx_json"]["Sequence"]
+        xaman_resp = http_requests.post(
+            "https://xumm.app/api/v1/platform/payload",
+            json={
+                "txjson": {
+                    "TransactionType": "EscrowCreate",
+                    "Destination":     project_address,
+                    "Amount":          half_drops,
+                    "Condition":       condition_hex,
+                    "CancelAfter":     cancel_after_rippletime,
+                }
+            },
+            headers=xaman_headers,
+            timeout=10,
+        )
 
-            escrow_id = db.create_escrow(
-                user_id=user_id,
-                project_id=project_id,
-                amount=half_xrp,
-                escrow_type=escrow_type,
-                condition_hex=condition_hex,
-                fulfillment_hex=fulfillment_hex,
-                escrow_sequence=escrow_seq,
-                escrow_account=user_wallet.classic_address,
-                destination=project_address,
-            )
+        if not xaman_resp.ok:
+            return jsonify({"error": f"Xaman API error: {xaman_resp.text}"}), 500
 
-            results.append({
-                "id": escrow_id,
-                "type": escrow_type,
-                "amount_xrp": half_xrp,
-                "sequence": escrow_seq,
-            })
+        xaman_data = xaman_resp.json()
+        uuid = xaman_data["uuid"]
 
-        return jsonify({"escrows": results}), 201
+        # Store everything needed to create the DB record after signing
+        pending_escrows[uuid] = {
+            "user_id":        user_id,
+            "project_id":     project_id,
+            "amount":         half_xrp,
+            "escrow_type":    escrow_type,
+            "condition_hex":  condition_hex,
+            "fulfillment_hex": fulfillment_hex,
+            "destination":    project_address,
+        }
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        payloads.append({
+            "uuid":       uuid,
+            "type":       escrow_type,
+            "amount_xrp": half_xrp,
+            "qr_url":     xaman_data["refs"]["qr_png"],
+            "ws_url":     xaman_data["refs"]["websocket_status"],
+            "sign_url":   xaman_data["next"]["always"],
+        })
+
+    return jsonify({"payloads": payloads}), 201
+
+
+@app.route("/escrow/confirm", methods=["POST"])
+def confirm_escrow():
+    """
+    Called by the frontend after the user signs a payload in Xaman.
+    Fetches the signed tx from Xaman, looks up the sequence on-ledger,
+    and writes the final escrow record to the DB.
+    """
+    body = request.get_json()
+    uuid = body.get("uuid")
+
+    pending = pending_escrows.get(uuid)
+    if not pending:
+        return jsonify({"error": "Payload not found or already confirmed"}), 404
+
+    xaman_headers = {
+        "Content-Type": "application/json",
+        "X-API-Key":    XAMAN_API_KEY,
+        "X-API-Secret": XAMAN_API_SECRET,
+    }
+
+    r = http_requests.get(
+        f"https://xumm.app/api/v1/platform/payload/{uuid}",
+        headers=xaman_headers,
+        timeout=10,
+    )
+    if not r.ok:
+        return jsonify({"error": "Could not fetch Xaman payload"}), 500
+
+    xaman_data    = r.json()
+    meta          = xaman_data.get("meta", {})
+    response_data = xaman_data.get("response", {})
+
+    if not meta.get("signed"):
+        return jsonify({"error": "Transaction not signed yet"}), 400
+
+    escrow_account = response_data.get("account")
+    txid           = response_data.get("txid")
+
+    # Look up the sequence number from the ledger using the txid
+    escrow_sequence = None
+    if txid:
+        try:
+            tx_info = client.request(Tx(transaction=txid))
+            tx_obj  = tx_info.result.get("tx_json") or tx_info.result.get("tx", {})
+            escrow_sequence = tx_obj.get("Sequence")
+        except Exception:
+            pass
+
+    escrow_id = db.create_escrow(
+        user_id=pending["user_id"],
+        project_id=pending["project_id"],
+        amount=pending["amount"],
+        escrow_type=pending["escrow_type"],
+        condition_hex=pending["condition_hex"],
+        fulfillment_hex=pending["fulfillment_hex"],
+        escrow_sequence=escrow_sequence,
+        escrow_account=escrow_account or "unknown",
+        destination=pending["destination"],
+    )
+
+    del pending_escrows[uuid]
+
+    return jsonify({
+        "id":         escrow_id,
+        "type":       pending["escrow_type"],
+        "amount_xrp": pending["amount"],
+        "sequence":   escrow_sequence,
+        "account":    escrow_account,
+        "txid":       txid,
+    }), 200
 
 
 @app.route("/users")
