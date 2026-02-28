@@ -17,17 +17,13 @@ from os import urandom
 
 import db
 
+#
+# The Client for the whole infrastructure uses this for now
+#
 client = JsonRpcClient("https://s.altnet.rippletest.net:51234")
 
 app = Flask(__name__)
 CORS(app)
-
-
-#
-# The Client for the whole infrastructure uses this for now
-#
-JSON_RPC_URL = "https://s.altnet.rippletest.net:51234/"
-client = JsonRpcClient(JSON_RPC_URL)
 
 
 def fill_wallets():
