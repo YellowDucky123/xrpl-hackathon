@@ -1,16 +1,24 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+
 from xrpl.models import EscrowCreate, EscrowFinish
 from xrpl.transaction import submit_and_wait
 from xrpl.utils import datetime_to_ripple_time
 
+from xrpl.clients import JsonRpcClient
+from xrpl.wallet import Wallet, generate_faucet_wallet
+from xrpl.models.requests import AccountInfo
+
 import db
+
+client = JsonRpcClient("https://s.altnet.rippletest.net:51234")
 
 app = Flask(__name__)
 CORS(app)
 
 JSON_RPC_URL = "https://s.altnet.rippletest.net:51234/"
 client = JsonRpcClient(JSON_RPC_URL)
+
 
 def fill_wallets():
     projects = db.get_all_projects()
@@ -36,22 +44,23 @@ def health():
 
 @app.route("/projects")
 def projects():
-    return jsonify(get_all_projects())
+    return jsonify(db.get_all_projects())
 
 
 @app.route("/projects/featured")
 def projects_featured():
-    return jsonify(get_projects_by_flag("is_featured"))
+    return jsonify(db.get_projects_by_flag("is_featured"))
 
 
 @app.route("/projects/recommended")
 def projects_recommended():
-    return jsonify(get_projects_by_flag("is_recommended"))
+    return jsonify(db.get_projects_by_flag("is_recommended"))
 
 
 @app.route("/projects/popular")
 def projects_popular():
-    return jsonify(get_projects_by_flag("is_popular"))
+    return jsonify(db.get_projects_by_flag("is_popular"))
+
 
 
 @app.route("")
@@ -78,7 +87,7 @@ def project(project_id):
     goal = data['goal']
     days = data['days']
 
-    curr_project = db.get_project_by_id(project_id) 
+    curr_project = db.get_project_by_id(project_id)
 
     # project wallet seed
     EXISTING_SEED = curr_project['project_wallet_seed']
@@ -109,7 +118,7 @@ def project(project_id):
 
 @app.route("/users")
 def users():
-    return jsonify(get_all_users())
+    return jsonify(db.get_all_users())
 
 
 @app.route("/users/<int:user_id>")

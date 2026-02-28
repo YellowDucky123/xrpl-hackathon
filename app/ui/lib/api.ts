@@ -19,10 +19,19 @@ export type Project = {
   is_featured: boolean;
   is_recommended: boolean;
   is_popular: boolean;
+  funded_by?: string | null;       // ISO date string e.g. "2026-03-18"
+  estimated_delivery?: string | null; // ISO date string e.g. "2026-05-31"
 };
 
 async function fetchProjects(path: string): Promise<Project[]> {
   const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getProjectById(id: number): Promise<Project | null> {
+  const res = await fetch(`${API_URL}/projects/${id}`, { cache: "no-store" });
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
