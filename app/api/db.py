@@ -1,4 +1,5 @@
 import os
+import datetime
 import psycopg2
 import psycopg2.extras
 
@@ -12,20 +13,28 @@ def get_connection():
     )
 
 
+def _serialize(row):
+    """Convert date/datetime values to ISO strings for JSON serialization."""
+    return {
+        k: v.isoformat() if isinstance(v, (datetime.date, datetime.datetime)) else v
+        for k, v in dict(row).items()
+    }
+
+
 def get_all_projects():
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT * FROM projects ORDER BY id")
-            return [dict(row) for row in cur.fetchall()]
+            return [_serialize(row) for row in cur.fetchall()]
+
 
 def get_project_by_id(project_id):
-    conn = _connection()
-    cur = conn.cursor()
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+            row = cur.fetchone()
+            return _serialize(row) if row else None
 
-    cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
-    project = cur.fetchone()
-
-    return dict(project)
 
 def get_projects_by_flag(flag):
     allowed = {"is_featured", "is_recommended", "is_popular"}
@@ -34,14 +43,14 @@ def get_projects_by_flag(flag):
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"SELECT * FROM projects WHERE {flag} = TRUE ORDER BY id")
-            return [dict(row) for row in cur.fetchall()]
+            return [_serialize(row) for row in cur.fetchall()]
 
 
 def get_all_users():
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT id, username, user_wallet_seed FROM users ORDER BY id")
-            return [dict(row) for row in cur.fetchall()]
+            return [_serialize(row) for row in cur.fetchall()]
 
 
 def get_user_by_id(user_id):
@@ -52,7 +61,7 @@ def get_user_by_id(user_id):
                 (user_id,),
             )
             row = cur.fetchone()
-            return dict(row) if row else None
+            return _serialize(row) if row else None
 
 
 def login_user(username, password):
@@ -63,4 +72,4 @@ def login_user(username, password):
                 (username, password),
             )
             row = cur.fetchone()
-            return dict(row) if row else None
+            return _serialize(row) if row else None

@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from db import (
     get_all_projects,
+    get_project_by_id,
     get_projects_by_flag,
     get_all_users,
     get_user_by_id,
@@ -20,6 +21,14 @@ def health():
 @app.route("/projects")
 def projects():
     return jsonify(get_all_projects())
+
+
+@app.route("/projects/<int:project_id>")
+def project(project_id):
+    result = get_project_by_id(project_id)
+    if result is None:
+        return jsonify({"error": "Project not found"}), 404
+    return jsonify(result)
 
 
 @app.route("/projects/featured")
