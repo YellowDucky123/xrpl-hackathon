@@ -106,6 +106,23 @@ def login_user(username, password):
             return _serialize(row) if row else None
 
 
+def get_escrow_count(project_id):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM escrows WHERE project_id = %s", (project_id,))
+            return cur.fetchone()[0]
+
+
+def get_escrow_total(project_id):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(SUM(amount), 0) FROM escrows WHERE project_id = %s",
+                (project_id,),
+            )
+            return float(cur.fetchone()[0])
+
+
 def create_escrow(user_id, project_id, amount, escrow_type,
                   condition_hex, fulfillment_hex, escrow_sequence,
                   escrow_account, destination):

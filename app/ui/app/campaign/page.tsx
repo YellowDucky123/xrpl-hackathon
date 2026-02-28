@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import PledgeModal from '../components/PledgeModal';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5001';
 
 // ─── Project data ─────────────────────────────────────────────────────────────
 
@@ -251,9 +253,29 @@ function PlaceholderTab({ label }: { label: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CampaignPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('Story');
+  const [activeTab, setActiveTab]       = useState<Tab>('Story');
   const [selectedReward, setSelectedReward] = useState<typeof REWARDS[0] | null>(null);
-  const pct = Math.min(Math.round((PROJECT.raised / PROJECT.goal) * 100), 100);
+  const [raised, setRaised]             = useState<number>(PROJECT.raised);
+  const [backers, setBackers]           = useState<number>(PROJECT.backers);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const wsUrl = API_URL.replace(/^http/, 'ws') + '/ws/project/1';
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.raised_xrp !== undefined) setRaised(msg.raised_xrp);
+        if (msg.backers    !== undefined) setBackers(msg.backers);
+      } catch { /* ignore */ }
+    };
+
+    return () => { ws.close(); };
+  }, []);
+
+  const pct = Math.min(Math.round((raised / PROJECT.goal) * 100), 100);
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -309,15 +331,15 @@ export default function CampaignPage() {
             </div>
 
             <div className="border-t border-gray-100 pt-4 space-y-3">
-              <ProgressBar raised={PROJECT.raised} goal={PROJECT.goal} />
+              <ProgressBar raised={raised} goal={PROJECT.goal} />
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-xl font-extrabold text-green-700">{PROJECT.raised.toLocaleString()}</p>
+                  <p className="text-xl font-extrabold text-green-700">{raised.toLocaleString()}</p>
                   <p className="text-xs text-gray-500">XRP pledged</p>
                 </div>
                 <div>
-                  <p className="text-xl font-extrabold text-gray-900">{PROJECT.backers.toLocaleString()}</p>
+                  <p className="text-xl font-extrabold text-gray-900">{backers.toLocaleString()}</p>
                   <p className="text-xs text-gray-500">backers</p>
                 </div>
                 <div>
@@ -327,7 +349,7 @@ export default function CampaignPage() {
               </div>
 
               <p className="text-xs text-gray-500 text-center">
-                {pct}% of {PROJECT.goal.toLocaleString()} XRP goal
+                {pct}% of {PROJECT.goal.toLocaleString()} XRP goal · <span className="text-green-600">live</span>
               </p>
 
               <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-full text-sm transition-colors shadow-sm">

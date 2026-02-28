@@ -1,14 +1,17 @@
 import os
 import hashlib
+import json
+import time
 from datetime import datetime, timedelta, timezone
 
 import requests as http_requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_sock import Sock
 
 from xrpl.clients import JsonRpcClient
 from xrpl.wallet import Wallet, generate_faucet_wallet
-from xrpl.models.requests import AccountInfo, Tx
+from xrpl.models.requests import AccountInfo, AccountObjects, Tx
 from xrpl.transaction import submit_and_wait
 from xrpl.utils import datetime_to_ripple_time
 
@@ -21,6 +24,7 @@ XAMAN_API_SECRET = os.environ.get("XAMAN_API_SECRET", "")
 
 app = Flask(__name__)
 CORS(app)
+sock = Sock(app)
 
 # In-memory store for pending Xaman payloads keyed by uuid
 pending_escrows: dict = {}
@@ -270,6 +274,53 @@ def confirm_escrow():
         "account":    escrow_account,
         "txid":       txid,
     }), 200
+
+
+@sock.route("/ws/project/<int:project_id>")
+def project_ws(ws, project_id):
+    """
+    WebSocket that pushes live on-chain stats every 5 seconds by querying
+    the XRPL testnet directly for escrow objects destined for the project wallet.
+
+      - raised_xrp : total XRP locked in escrows going to this project (on-chain)
+      - backers    : number of those escrow objects / 2  (each backer creates 2)
+    """
+    project = db.get_project_by_id(project_id)
+    if not project or not project.get("project_wallet_seed"):
+        ws.send(json.dumps({"error": "Project not found"}))
+        return
+
+    project_wallet  = Wallet.from_seed(project["project_wallet_seed"])
+    project_address = project_wallet.classic_address
+
+    while True:
+        try:
+            response = client.request(AccountObjects(
+                account=project_address,
+                type="escrow",
+                ledger_index="validated",
+            ))
+
+            escrow_objects = response.result.get("account_objects", [])
+
+            # Keep only escrows where this project is the destination
+            # (filters out any escrows the project itself might have created)
+            incoming = [
+                obj for obj in escrow_objects
+                if obj.get("Destination") == project_address
+            ]
+
+            total_drops = sum(int(obj["Amount"]) for obj in incoming)
+            total_xrp   = total_drops / 1_000_000
+            backers     = len(incoming) // 2
+
+            ws.send(json.dumps({
+                "raised_xrp": total_xrp,
+                "backers":    backers,
+            }))
+            time.sleep(5)
+        except Exception:
+            break
 
 
 @app.route("/users")
